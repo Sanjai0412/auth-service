@@ -23,7 +23,7 @@ const loginSchema = z.object({
 
 const refreshSchema = z.object({
   refreshToken: z.string().min(1, "Refresh token is required"),
-})
+});
 
 // Route for refresh token
 router.post("/refresh", validate(refreshSchema), authController.refresh);
@@ -33,13 +33,13 @@ router.get("/me", authenticateToken, (req, res) => {
   return res.status(200).json({
     success: true,
     message: "Token verified successfully",
-    user: req.user
+    user: req.user,
   });
 });
-
 
 router.post("/verify", validate(verifySchema), authController.verifyEmail);
 router.post("/register", validate(registerSchema), authController.register);
 router.post("/login", validate(loginSchema), authController.login);
+router.post("/logout", authenticateToken, validate(refreshSchema), authController.logout);
 
 module.exports = router;

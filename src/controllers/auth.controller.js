@@ -56,6 +56,22 @@ const login = async (req, res) => {
     });
   }
 };
+const logout = async (req, res) => {
+  const { refreshToken } = req.body;
+  const userId = req.user.userId;
+  try {
+    const result = await authService.logout(refreshToken, userId);
+    return res.status(200).json({
+      success: true,
+      message: result.message,
+    });
+  } catch (err) {
+    return res.status(400).json({
+      success: false,
+      message: err.message,
+    });
+  }
+};
 
 const refresh = async (req, res) => {
   const { refreshToken } = req.body;
@@ -72,6 +88,6 @@ const refresh = async (req, res) => {
       message: err.message,
     });
   }
-}
+};
 
-module.exports = { register, verifyEmail, login, refresh };
+module.exports = { register, verifyEmail, login, logout, refresh };

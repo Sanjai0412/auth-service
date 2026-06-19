@@ -1,5 +1,6 @@
 const userModel = require("../models/user.model");
 const otpModel = require("../models/otp.model");
+const refreshTokenModel = require("../models/refreshToken.model");
 const emailService = require("../services/email.service");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
@@ -68,22 +69,26 @@ const login = async (email, password) => {
   const payload = {
     userId: user.id,
     username: user.username,
-  }
+  };
 
   // Generate access token (15 mins)
-  const accessToken = jwt.sign(
-    payload,
-    process.env.ACCESS_TOKEN_SECRET,
-    { expiresIn: "15m" }
-  );
+  const accessToken = jwt.sign(payload, process.env.ACCESS_TOKEN_SECRET, {
+    expiresIn: "15m",
+  });
 
   // Generate refresh token (7 days)
-  const refreshToken = jwt.sign(
-    payload,
-    process.env.REFRESH_TOKEN_SECRET,
-    { expiresIn: "7d" }
-  )
+  const refreshToken = jwt.sign(payload, process.env.REFRESH_TOKEN_SECRET, {
+    expiresIn: "7d",
+  });
 
+  // save token on DB
+  const expiresAt = new Date();
+  expiresAt.setDate(expiresAt.getDate() + 7); // 7 days from now
+  const result = await refreshTokenModel.saveRefreshToken(
+    user.id,
+    refreshToken,
+    expiresAt,
+  );
   // Token along with user details
   return {
     accessToken,
@@ -91,9 +96,17 @@ const login = async (email, password) => {
     user: {
       id: user.id,
       username: user.username,
-      email: user.email
-    }
+      email: user.email,
+    },
   };
+};
+
+const logout = async (token, userId) => {
+  if (!token) throw new Error("Refresh token is required");
+
+  await refreshTokenModel.deleteRefreshToken(token);
+  await userModel.updateUserStatus(userId, "OFFLINE");
+  return { message: "User logged out successfully" };
 };
 
 const refresh = async (refreshToken) => {
@@ -101,26 +114,30 @@ const refresh = async (refreshToken) => {
     throw new Error("Refresh token is required");
   }
   try {
+    const tokenRecord = await refreshTokenModel.findRefreshToken(refreshToken);
+    const date = new Date();
+    if (!tokenRecord || date > tokenRecord.expires_at) {
+      throw new Error("Invalid or expired refresh token");
+    }
     const decoded = jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET);
     const payload = {
       userId: decoded.userId,
       username: decoded.username,
-    }
-    const accessToken = jwt.sign(
-      payload,
-      process.env.ACCESS_TOKEN_SECRET,
-      { expiresIn: "15m" }
-    );
+    };
+    const accessToken = jwt.sign(payload, process.env.ACCESS_TOKEN_SECRET, {
+      expiresIn: "15m",
+    });
 
     return { accessToken };
   } catch (err) {
     throw new Error("Invalid or expired refresh token");
   }
-}
+};
 
 module.exports = {
   register,
   verifyEmail,
   login,
-  refresh
+  logout,
+  refresh,
 };
