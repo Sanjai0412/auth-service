@@ -7,7 +7,7 @@ const jwt = require("jsonwebtoken");
 
 const verifyEmail = async (userId, otp) => {
   // Retrieve otp from database
-  const otpRecord = await otpModel.findOTP(userId, otp);
+  const otpRecord = await otpModel.findOTPbyUserId(userId);
 
   if (!otpRecord) {
     throw new Error("Invlaid verification code");
@@ -15,6 +15,9 @@ const verifyEmail = async (userId, otp) => {
   // Check if the OTP is expired
   const now = new Date();
   if (now > otpRecord.expires_at) {
+    // clear the expired OTP from the database
+    await otpModel.clearExpiredOTPs();
+
     throw new Error("Verification code has expired");
   }
   // Update the user's status to "ACTIVE"
@@ -30,11 +33,21 @@ const register = async (user) => {
   if (userExists) {
     throw new Error("Email is already registered");
   }
+  const usernameExists = await userModel.findUserByUsername(user.username);
+  if (usernameExists) {
+    throw new Error("Username already taken");
+  }
   const salt = await bcrypt.genSalt(10);
   const hash = await bcrypt.hash(user.password, salt);
   user.passwordHash = hash;
   const newUser = await userModel.registerUser(user); // register with PENDING status
 
+  await sendVerificationEmail(newUser.id, newUser.email); // send verification email with OTP
+
+  return newUser;
+};
+
+const sendVerificationEmail = async (userId, email) => {
   // generate a 6-digit OTP
   const otp = Math.floor(100000 + Math.random() * 900000).toString();
   // set expiration date
@@ -43,12 +56,27 @@ const register = async (user) => {
   expiresAt.setMinutes(expiresAt.getMinutes() + expirationDuration);
 
   // save to DB
-  await otpModel.saveOTP(newUser.id, otp, expiresAt);
+  await otpModel.saveOTP(userId, otp, expiresAt);
 
   // send OTP via email
-  await emailService.sendVerificationOTP(newUser.email, otp);
+  await emailService.sendVerificationOTP(email, otp);
+};
 
-  return newUser;
+const resendOTP = async (userId) => {
+  const user = await userModel.findUserById(userId);
+  if (!user) {
+    throw new Error("User details not found");
+  }
+  const otp = await otpModel.findOTPbyUserId(userId);
+  if (otp && otp.created_at > new Date(Date.now() - 10 * 60 * 1000)) {
+    throw new Error("OTP can only be resent after 10 minutes");
+  }
+  if (user.status === "ACTIVE") {
+    throw new Error("Email is already verified");
+  }
+  // Call the sendVerificationEmail function to resend the OTP
+  await sendVerificationEmail(userId, user.email);
+  return { message: "Verification OTP sent successfully" };
 };
 
 const login = async (email, password) => {
@@ -137,6 +165,7 @@ const refresh = async (refreshToken) => {
 module.exports = {
   register,
   verifyEmail,
+  resendOTP,
   login,
   logout,
   refresh,

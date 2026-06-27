@@ -16,6 +16,10 @@ const verifySchema = z.object({
   otp: z.string().length(6, "OTP must be exactly 6 characters"),
 });
 
+const resendOTPSchema = z.object({
+  userId: z.string().uuid("Invalid user Id format"),
+});
+
 const loginSchema = z.object({
   email: z.string().email("Invalid email format"),
   password: z.string().min(8, "Password must be at least 8 characters"),
@@ -40,6 +44,12 @@ router.get("/me", authenticateToken, (req, res) => {
 router.post("/verify", validate(verifySchema), authController.verifyEmail);
 router.post("/register", validate(registerSchema), authController.register);
 router.post("/login", validate(loginSchema), authController.login);
-router.post("/logout", authenticateToken, validate(refreshSchema), authController.logout);
+router.post(
+  "/logout",
+  authenticateToken,
+  validate(refreshSchema),
+  authController.logout,
+);
+router.post("/resend-otp", validate(resendOTPSchema), authController.resendOTP);
 
 module.exports = router;

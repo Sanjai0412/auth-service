@@ -1,46 +1,30 @@
 const pool = require("../config/db");
 
 const saveOTP = async (userId, code, expiresAt) => {
-  try {
-    const query =
-      "INSERT INTO otps (user_id, code, expires_at) VALUES ($1, $2, $3)";
-    const result = await pool.query(query, [userId, code, expiresAt]);
-  } catch (err) {
-    throw err;
-  }
+  const query =
+    "INSERT INTO otps (user_id, code, expires_at) VALUES ($1, $2, $3)";
+  await pool.query(query, [userId, code, expiresAt]);
 };
 
-const findOTP = async (userId, code) => {
-  try {
-    const query = "SELECT * FROM otps WHERE user_id = $1 AND code = $2";
-    const result = await pool.query(query, [userId, code]);
-    return result.rows[0];
-  } catch (err) {
-    throw err;
-  }
+const findOTPbyUserId = async (userId) => {
+  const query = "SELECT * FROM otps WHERE user_id = $1";
+  const result = await pool.query(query, [userId]);
+  return result.rows[0];
 };
 
 const deleteOTP = async (userId) => {
-  try {
-    const query = "DELETE FROM otps WHERE user_id = $1";
-    const result = await pool.query(query, [userId]);
-  } catch (err) {
-    throw err;
-  }
+  const query = "DELETE FROM otps WHERE user_id = $1";
+  await pool.query(query, [userId]);
 };
 
 const clearExpiredOTPs = async () => {
-  try {
-    const query = "DELETE FROM otps WHERE expires_at < NOW()";
-    const result = await pool.query(query);
-  } catch (err) {
-    throw err;
-  }
+  const query = "DELETE FROM otps WHERE expires_at < NOW()";
+  await pool.query(query);
 };
 
 module.exports = {
   saveOTP,
-  findOTP,
+  findOTPbyUserId,
   deleteOTP,
   clearExpiredOTPs,
 };

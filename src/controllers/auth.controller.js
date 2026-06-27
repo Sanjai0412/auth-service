@@ -19,7 +19,12 @@ const register = async (req, res) => {
   } catch (err) {
     return res.status(400).json({
       success: false,
-      message: err.message,
+      errors: [
+        {
+          field: "general",
+          message: err.message,
+        },
+      ],
     });
   }
 };
@@ -35,10 +40,37 @@ const verifyEmail = async (req, res) => {
   } catch (err) {
     return res.status(400).json({
       success: false,
-      message: err.message,
+      errors: [
+        {
+          field: "general",
+          message: err.message,
+        },
+      ],
     });
   }
 };
+
+const resendOTP = async (req, res) => {
+  const { userId } = req.body;
+  try {
+    const result = await authService.resendOTP(userId);
+    return res.status(200).json({
+      success: true,
+      message: result.message,
+    });
+  } catch (err) {
+    return res.status(400).json({
+      success: false,
+      errors: [
+        {
+          field: "general",
+          message: err.message,
+        },
+      ],
+    });
+  }
+};
+
 const login = async (req, res) => {
   const { email, password } = req.body;
   try {
@@ -52,7 +84,12 @@ const login = async (req, res) => {
   } catch (err) {
     return res.status(400).json({
       success: false,
-      message: err.message,
+      errors: [
+        {
+          field: "general",
+          message: err.message,
+        },
+      ],
     });
   }
 };
@@ -68,7 +105,12 @@ const logout = async (req, res) => {
   } catch (err) {
     return res.status(400).json({
       success: false,
-      message: err.message,
+      errors: [
+        {
+          field: "general",
+          message: err.message,
+        },
+      ],
     });
   }
 };
@@ -85,9 +127,14 @@ const refresh = async (req, res) => {
   } catch (err) {
     return res.status(401).json({
       success: false,
-      message: err.message,
+      errors: [
+        {
+          field: "general",
+          message: err.message,
+        },
+      ],
     });
   }
 };
 
-module.exports = { register, verifyEmail, login, logout, refresh };
+module.exports = { register, verifyEmail, login, logout, refresh, resendOTP };
