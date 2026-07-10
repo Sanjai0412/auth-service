@@ -25,12 +25,8 @@ const loginSchema = z.object({
   password: z.string().min(8, "Password must be at least 8 characters"),
 });
 
-const refreshSchema = z.object({
-  refreshToken: z.string().min(1, "Refresh token is required"),
-});
-
 // Route for refresh token
-router.post("/refresh", validate(refreshSchema), authController.refresh);
+router.post("/refresh", authController.refresh);
 
 // A protected route to test if JWT auth works or not
 router.get("/me", authenticateToken, (req, res) => {
@@ -44,12 +40,7 @@ router.get("/me", authenticateToken, (req, res) => {
 router.post("/verify", validate(verifySchema), authController.verifyEmail);
 router.post("/register", validate(registerSchema), authController.register);
 router.post("/login", validate(loginSchema), authController.login);
-router.post(
-  "/logout",
-  authenticateToken,
-  validate(refreshSchema),
-  authController.logout,
-);
+router.post("/logout", authenticateToken, authController.logout);
 router.post("/resend-otp", validate(resendOTPSchema), authController.resendOTP);
 
 module.exports = router;

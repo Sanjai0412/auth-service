@@ -75,11 +75,24 @@ const login = async (req, res) => {
   const { email, password } = req.body;
   try {
     const result = await authService.login(email, password);
+    const { user, accessToken, refreshToken } = result;
+
+    // Storing JWT tokens in http cookie
+    res.cookie("accessToken", accessToken, {
+      httpOnly: true,
+      secure: process.env.SECURE_COOKIE === "production",
+      sameSite: "lax",
+      maxAge: 15 * 60 * 1000, // 15mins
+    });
+    res.cookie("refreshToken", refreshToken, {
+      httpOnly: true,
+      secure: process.env.SECURE_COOKIE === "production",
+      sameSite: "strict",
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+    });
     return res.status(200).json({
       success: true,
-      accessToken: result.accessToken,
-      refreshToken: result.refreshToken,
-      user: result.user,
+      user,
     });
   } catch (err) {
     return res.status(400).json({
@@ -94,10 +107,12 @@ const login = async (req, res) => {
   }
 };
 const logout = async (req, res) => {
-  const { refreshToken } = req.body;
+  const refreshToken = req.cookies.refreshToken;
   const userId = req.user.userId;
   try {
     const result = await authService.logout(refreshToken, userId);
+    res.clearCookie("accessToken");
+    res.clearCookie("refreshToken");
     return res.status(200).json({
       success: true,
       message: result.message,
@@ -116,7 +131,7 @@ const logout = async (req, res) => {
 };
 
 const refresh = async (req, res) => {
-  const { refreshToken } = req.body;
+  const refreshToken = req.cookies.refreshToken;
 
   try {
     const result = await authService.refresh(refreshToken);
