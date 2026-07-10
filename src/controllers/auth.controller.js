@@ -135,9 +135,18 @@ const refresh = async (req, res) => {
 
   try {
     const result = await authService.refresh(refreshToken);
+
+    const accessToken = result.accessToken;
+    // Storing JWT tokens in http cookie
+    res.cookie("accessToken", accessToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 15 * 60 * 1000, // 15mins
+    });
     return res.status(200).json({
       success: true,
-      accessToken: result.accessToken,
+      message: "Access token refreshed successfully",
     });
   } catch (err) {
     return res.status(401).json({
