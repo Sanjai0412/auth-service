@@ -4,17 +4,20 @@ A reusable, lightweight authentication microservice built with Node.js, Express,
 
 ## Diagram
 
-React Client
-│
-│ HttpOnly Cookies
-▼
-Auth Service (Node.js)
-│
-├── PostgreSQL
-└── JWT
-│
-▼
-Protected Backend Services
+```mermaid
+flowchart TD
+    A[Client Application] -->|Login / Refresh / Logout| B[JWT Authentication Service<br/>Node.js + Express]
+
+    B --> C[(PostgreSQL)]
+
+    C --> D[Users]
+    C --> E[OTP Codes]
+    C --> F[Refresh Tokens]
+
+    B --> G[Issues JWTs]
+    G --> H[Access Token<br/>HttpOnly Cookie]
+    G --> I[Refresh Token<br/>HttpOnly Cookie]
+```
 
 ## 🚀 Features
 
