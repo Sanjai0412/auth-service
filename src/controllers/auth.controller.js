@@ -80,13 +80,13 @@ const login = async (req, res) => {
     // Storing JWT tokens in http cookie
     res.cookie("accessToken", accessToken, {
       httpOnly: true,
-      secure: process.env.SECURE_COOKIE === "production",
+      secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
       maxAge: 15 * 60 * 1000, // 15mins
     });
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
-      secure: process.env.SECURE_COOKIE === "production",
+      secure: process.env.NODE_ENV === "production",
       sameSite: "strict",
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
     });
