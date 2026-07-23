@@ -1,7 +1,11 @@
 const jwt = require("jsonwebtoken");
 
 const authenticateToken = (req, res, next) => {
-  const token = req.cookies.accessToken;
+  const authHeader = req.headers["authorization"];
+  const token = authHeader && authHeader.startsWith("Bearer ")
+    ? authHeader.slice(7)
+    : null;
+
   if (!token) {
     return res.status(401).json({
       success: false,
@@ -9,7 +13,7 @@ const authenticateToken = (req, res, next) => {
     });
   }
   try {
-    // Verify token with access token
+    // Verify token with access token secret
     const decoded = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET);
 
     // add payload to req object

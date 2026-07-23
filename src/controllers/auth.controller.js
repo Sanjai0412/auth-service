@@ -77,21 +77,18 @@ const login = async (req, res) => {
     const result = await authService.login(email, password);
     const { user, accessToken, refreshToken } = result;
 
-    // Storing JWT tokens in http cookie
-    res.cookie("accessToken", accessToken, {
-      httpOnly: true,
-      secure: isProduction,
-      sameSite: isProduction ? "none" : "lax",
-      maxAge: 15 * 60 * 1000, // 15mins
-    });
+    // Storing JWT long lived refresh token in http-only cookie
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
       secure: isProduction,
       sameSite: "none",
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
     });
+
+    // Sending JWT short lived access token in response body (client stores & sends via Authorization header)
     return res.status(200).json({
       success: true,
+      accessToken,
       user,
     });
   } catch (err) {
@@ -111,7 +108,6 @@ const logout = async (req, res) => {
   const userId = req.user.userId;
   try {
     const result = await authService.logout(refreshToken, userId);
-    res.clearCookie("accessToken");
     res.clearCookie("refreshToken");
     return res.status(200).json({
       success: true,
@@ -137,16 +133,12 @@ const refresh = async (req, res) => {
     const result = await authService.refresh(refreshToken);
 
     const accessToken = result.accessToken;
-    // Storing JWT tokens in http cookie
-    res.cookie("accessToken", accessToken, {
-      httpOnly: true,
-      secure: isProduction,
-      sameSite: isProduction ? "none" : "lax",
-      maxAge: 15 * 60 * 1000, // 15mins
-    });
+
+    // Sending new access token in response body (client stores & sends via Authorization header)
     return res.status(200).json({
       success: true,
       message: "Access token refreshed successfully",
+      accessToken,
     });
   } catch (err) {
     return res.status(401).json({
