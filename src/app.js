@@ -7,7 +7,7 @@ const app = express();
 app.use(cookieParser());
 app.use(
   cors({
-    origin: "http://localhost:5173",
+    origin: "https://pingx-ginnxelrf-sanjaii04.vercel.app/",
     credentials: true,
   }),
 );

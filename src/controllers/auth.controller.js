@@ -1,8 +1,9 @@
 const authService = require("../services/auth.service");
 
+const isProduction = process.env.NODE_ENV === "production";
+
 const register = async (req, res) => {
   const { username, email, password } = req.body;
-
   try {
     const user = {
       username,
@@ -79,13 +80,13 @@ const login = async (req, res) => {
     // Storing JWT tokens in http cookie
     res.cookie("accessToken", accessToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "none",
+      secure: isProduction,
+      sameSite: isProduction ? "none" : "lax",
       maxAge: 15 * 60 * 1000, // 15mins
     });
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
+      secure: isProduction,
       sameSite: "none",
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
     });
@@ -139,8 +140,8 @@ const refresh = async (req, res) => {
     // Storing JWT tokens in http cookie
     res.cookie("accessToken", accessToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "none",
+      secure: isProduction,
+      sameSite: isProduction ? "none" : "lax",
       maxAge: 15 * 60 * 1000, // 15mins
     });
     return res.status(200).json({
