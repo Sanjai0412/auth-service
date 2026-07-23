@@ -7,7 +7,7 @@ const app = express();
 app.use(cookieParser());
 app.use(
   cors({
-    origin: "https://pingx-ginnxelrf-sanjaii04.vercel.app/",
+    origin: "https://pingx-sanjaii04.vercel.app",
     credentials: true,
   }),
 );
