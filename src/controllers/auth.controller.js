@@ -1,4 +1,3 @@
-
 const authService = require("../services/auth.service");
 
 const register = async (req, res) => {
@@ -81,13 +80,13 @@ const login = async (req, res) => {
     res.cookie("accessToken", accessToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
+      sameSite: "none",
       maxAge: 15 * 60 * 1000, // 15mins
     });
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
+      sameSite: "none",
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
     });
     return res.status(200).json({
@@ -141,7 +140,7 @@ const refresh = async (req, res) => {
     res.cookie("accessToken", accessToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
+      sameSite: "none",
       maxAge: 15 * 60 * 1000, // 15mins
     });
     return res.status(200).json({
