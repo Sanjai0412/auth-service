@@ -1,4 +1,4 @@
-const { success } = require("zod");
+
 const authService = require("../services/auth.service");
 
 const register = async (req, res) => {

@@ -23,3 +23,15 @@ CREATE TABLE refresh_tokens (
     expires_at TIMESTAMP NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+-- Search users by username
+CREATE INDEX idx_users_username
+ON users(username);
+
+-- Fast OTP lookup by user
+CREATE INDEX idx_otps_user_id
+ON otps(user_id);
+
+-- Fast refresh token lookup by user
+CREATE INDEX idx_refresh_tokens_user_id
+ON refresh_tokens(user_id);
