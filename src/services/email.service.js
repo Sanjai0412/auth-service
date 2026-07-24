@@ -1,24 +1,32 @@
-const { Resend } = require("resend");
+const nodemailer = require("nodemailer");
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+// Create transporter using gmail SMTP
+const transporter = nodemailer.createTransport({
+  host: "smtp.gmail.com",
+  port: 587,
+  secure: false,
+  family: 4,
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS,
+  },
+});
 
 const sendVerificationOTP = async (email, otp) => {
-  const { data, error } = await resend.emails.send({
-    from: "PingX <onboarding@resend.dev>",
+  const mailOptions = {
+    from: process.env.EMAIL_USER,
     to: email,
-    subject: "Verify your email",
-    html: `
-      <h2>PingX Verification</h2>
-      <p>Your verification code is:</p>
-      <h1>${otp}</h1>
-      <p>This code expires in 10 minutes.</p>
-    `,
-  });
-  console.log("Resend Data:", data);
-  console.log("Resend Error:", error);
-
-  if (error) {
-    throw error;
+    subject: "Verify your email address",
+    text: `Your email verification code is ${otp} it will expires in 10 minutes.`,
+    html: `<p>Your email verification code is : <strong>${otp}</strong>.</p>
+    <p> It will expires in 10 minutes.</p>`,
+  };
+  try {
+    await transporter.sendMail(mailOptions);
+    console.log(`Verification mail sent to ${email}`);
+  } catch (err) {
+    console.error("Error sending email : ", err);
+    throw new Error("Failed to send verification code");
   }
 };
 
