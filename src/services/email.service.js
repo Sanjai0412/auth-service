@@ -1,30 +1,50 @@
-const Brevo = require("@getbrevo/brevo");
+const { BrevoClient } = require("@getbrevo/brevo");
 
-const apiInstance = new Brevo.TransactionalEmailsApi();
-apiInstance.setApiKey(
-  Brevo.TransactionalEmailsApiApiKeys.apiKey,
-  process.env.BREVO_API_KEY, // Grab this from Brevo Dashboard -> SMTP & API
-);
+const brevo = new BrevoClient({
+  apiKey: process.env.BREVO_API_KEY,
+});
 
-const sendVerificationOtp = async (toEmail, otpCode) => {
-  const sendSmtpEmail = new Brevo.SendSmtpEmail();
-
-  sendSmtpEmail.subject = "Your Verification OTP";
-  sendSmtpEmail.htmlContent = `<p>Your OTP code is: <strong>${otpCode}</strong></p>`;
-  sendSmtpEmail.sender = {
-    name: "Your App",
-    email: process.env.VERIFIED_GMAIL, // Your verified Gmail address in Brevo
-  };
-  sendSmtpEmail.to = [{ email: toEmail }];
-
+const sendVerificationOTP = async (toEmail, otpCode) => {
   try {
-    const data = await apiInstance.sendTransacEmail(sendSmtpEmail);
-    console.log("OTP Sent Successfully!", data);
-  } catch (error) {
-    console.error("Error sending email via Brevo:", error);
+    const response = await brevo.transactionalEmails.sendTransacEmail({
+      sender: {
+        name: "PingX",
+        email: process.env.BREVO_SENDER_EMAIL,
+      },
+
+      to: [
+        {
+          email: toEmail,
+        },
+      ],
+
+      subject: "Verify your PingX account",
+
+      htmlContent: `
+        <div style="font-family: Arial, sans-serif; max-width:600px; margin:auto;">
+          <h2>Welcome to PingX 👋</h2>
+
+          <p>Your verification code is:</p>
+
+          <h1 style="letter-spacing:5px">${otpCode}</h1>
+
+          <p>This OTP expires in <strong>10 minutes</strong>.</p>
+
+          <p>If you didn't request this email, you can safely ignore it.</p>
+        </div>
+      `,
+    });
+
+    console.log("✅ Email sent:", response);
+
+    return response;
+  } catch (err) {
+    console.error("❌ Brevo:", err);
+
+    throw err;
   }
 };
 
 module.exports = {
-  sendVerificationOtp,
+  sendVerificationOTP,
 };
