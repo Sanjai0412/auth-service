@@ -6,7 +6,7 @@ apiInstance.setApiKey(
   process.env.BREVO_API_KEY, // Grab this from Brevo Dashboard -> SMTP & API
 );
 
-export async function sendVerificationOtp(toEmail, otpCode) {
+export const sendVerificationOtp = async (toEmail, otpCode) => {
   const sendSmtpEmail = new Brevo.SendSmtpEmail();
 
   sendSmtpEmail.subject = "Your Verification OTP";
@@ -23,4 +23,4 @@ export async function sendVerificationOtp(toEmail, otpCode) {
   } catch (error) {
     console.error("Error sending email via Brevo:", error);
   }
-}
+};
