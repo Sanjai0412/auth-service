@@ -1,35 +1,26 @@
-const nodemailer = require("nodemailer");
+import * as Brevo from "@getbrevo/brevo";
 
-// Create transporter using gmail SMTP
-const transporter = nodemailer.createTransport({
-  host: "smtp.gmail.com",
-  port: 587,
-  secure: false,
-  family: 4,
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
-  },
-});
+const apiInstance = new Brevo.TransactionalEmailsApi();
+apiInstance.setApiKey(
+  Brevo.TransactionalEmailsApiApiKeys.apiKey,
+  process.env.BREVO_API_KEY, // Grab this from Brevo Dashboard -> SMTP & API
+);
 
-const sendVerificationOTP = async (email, otp) => {
-  const mailOptions = {
-    from: process.env.EMAIL_USER,
-    to: email,
-    subject: "Verify your email address",
-    text: `Your email verification code is ${otp} it will expires in 10 minutes.`,
-    html: `<p>Your email verification code is : <strong>${otp}</strong>.</p>
-    <p> It will expires in 10 minutes.</p>`,
+export async function sendVerificationOtp(toEmail, otpCode) {
+  const sendSmtpEmail = new Brevo.SendSmtpEmail();
+
+  sendSmtpEmail.subject = "Your Verification OTP";
+  sendSmtpEmail.htmlContent = `<p>Your OTP code is: <strong>${otpCode}</strong></p>`;
+  sendSmtpEmail.sender = {
+    name: "Your App",
+    email: process.env.VERIFIED_GMAIL, // Your verified Gmail address in Brevo
   };
-  try {
-    await transporter.sendMail(mailOptions);
-    console.log(`Verification mail sent to ${email}`);
-  } catch (err) {
-    console.error("Error sending email : ", err);
-    throw new Error("Failed to send verification code");
-  }
-};
+  sendSmtpEmail.to = [{ email: toEmail }];
 
-module.exports = {
-  sendVerificationOTP,
-};
+  try {
+    const data = await apiInstance.sendTransacEmail(sendSmtpEmail);
+    console.log("OTP Sent Successfully!", data);
+  } catch (error) {
+    console.error("Error sending email via Brevo:", error);
+  }
+}
