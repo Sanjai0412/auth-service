@@ -1,4 +1,4 @@
-import * as Brevo from "@getbrevo/brevo";
+const Brevo = require("@getbrevo/brevo");
 
 const apiInstance = new Brevo.TransactionalEmailsApi();
 apiInstance.setApiKey(
