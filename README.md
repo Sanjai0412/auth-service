@@ -1,41 +1,56 @@
 # Personal JWT Authentication Microservice
 
-A reusable, lightweight authentication microservice built with Node.js, Express, and PostgreSQL. It uses a hybrid JWT architecture with **short-lived Access Tokens and long-lived Refresh Tokens stored as secure HttpOnly cookies**. Email verification is implemented using OTP.
-
-## Diagram
-
-```mermaid
-flowchart TD
-    A[Client Application] -->|Login / Refresh / Logout| B[JWT Authentication Service<br/>Node.js + Express]
-
-    B --> C[(PostgreSQL)]
-
-    C --> D[Users]
-    C --> E[OTP Codes]
-    C --> F[Refresh Tokens]
-
-    B --> G[Issues JWTs]
-    G --> H[Access Token<br/>HttpOnly Cookie]
-    G --> I[Refresh Token<br/>HttpOnly Cookie]
-```
-
-## 🚀 Features
-
-- **Robust Security:** Password hashing using `bcryptjs` and request validation using `zod`.
-- **Email Verification (OTP):** Sends a 6-digit verification code using `nodemailer` (Gmail SMTP) during registration.
-- **Secure Cookie-Based Authentication:**
-  - **Access Token:** Short-lived (15 minutes) JWT stored in an **HttpOnly cookie**.
-  - **Refresh Token:** Long-lived (7 days) JWT stored in an **HttpOnly cookie** and persisted in PostgreSQL for session management.
-
-- **Automatic Token Refresh:** Clients can obtain a new access token without exposing JWTs to JavaScript.
-- **Stateful Logout:** Revokes the refresh token from the database and clears authentication cookies.
-- **Cross-Service Authentication:** Can be integrated with other backend services that validate the access token.
+A lightweight authentication microservice built with Node.js, Express, and PostgreSQL. It features a security architecture using **short-lived Access Tokens (passed via response body & Authorization Bearer headers in application memory) and long-lived Refresh Tokens (stored in secure HttpOnly cookies and persisted in PostgreSQL)**. Email verification is implemented using 6-digit OTP codes via Brevo API (`@getbrevo/brevo`).
 
 ---
 
-## 🛠️ Database Setup (PostgreSQL)
+## Live Deployments
 
-Run the following DDL queries to create the required tables:
+| Service | Platform | URL / Base Endpoint |
+| :--- | :--- | :--- |
+| **Auth Microservice** | Railway | [https://auth-service-production-4ccd.up.railway.app](https://auth-service-production-4ccd.up.railway.app) |
+
+### Used By
+- **PingX Frontend:** [https://pingx-sanjaii04.vercel.app](https://pingx-sanjaii04.vercel.app)
+- **PingX Backend API:** [https://pingx-backend-production.up.railway.app](https://pingx-backend-production.up.railway.app)
+
+---
+
+## Authentication Architecture Diagram
+
+```mermaid
+flowchart TD
+    Client[Client Application / Axios] -->|Login / Refresh / Logout| Auth[Auth Service<br/>Node.js + Express]
+    Auth --> DB[(PostgreSQL DB)]
+    
+    DB --> UsersTable[users]
+    DB --> OtpsTable[otps]
+    DB --> TokensTable[refresh_tokens]
+
+    Auth -->|1. Response Body| AccessToken[Access Token<br/>15 min - In-Memory]
+    Auth -->|2. HttpOnly Cookie| RefreshToken[Refresh Token<br/>7 days - Secure Cookie]
+    
+    Client -->|Authorization: Bearer Token| Microservices[Backend Services / APIs]
+```
+
+---
+
+## Features
+
+- **Password Security:** Password hashing using `bcryptjs` (salt rounds: 10).
+- **Validation:** Request body validation with `zod`.
+- **Email Verification (OTP):** Sends a 6-digit verification code using Brevo Transactional Email API (`@getbrevo/brevo`) on registration.
+- **In-Memory Access Tokens & HttpOnly Refresh Cookies:**
+  - **Access Token:** Short-lived (15 minutes) JWT returned in the response body for in-memory client storage (sent via `Authorization: Bearer <accessToken>`).
+  - **Refresh Token:** Long-lived (7 days) JWT stored in a secure `HttpOnly` cookie and persisted in PostgreSQL.
+- **Automatic Silent Token Refresh:** Client interceptors request a new access token via `/auth/refresh` using the `HttpOnly` refresh token cookie without storing access tokens in localStorage.
+- **Stateful Logout:** Revokes the refresh token from the database, marks the user status as `OFFLINE`, and clears the refresh cookie.
+
+---
+
+## Database Setup (PostgreSQL)
+
+Run the following DDL queries to set up the database schema:
 
 ```sql
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
@@ -71,14 +86,14 @@ CREATE TABLE refresh_tokens (
 
 ---
 
-## ⚙️ Environment Variables (`.env`)
+## Environment Variables (`.env`)
 
-Create a `.env` file in the project root:
+Create a `.env` file in the root of the project:
 
 ```env
 PORT=3000
 
-# Database
+# Database Configuration
 DB_NAME=auth-service
 DB_HOST=localhost
 DB_PORT=5432
@@ -89,48 +104,22 @@ DB_PASSWORD=your_db_password
 ACCESS_TOKEN_SECRET=your_jwt_access_secret
 REFRESH_TOKEN_SECRET=your_jwt_refresh_secret
 
-# Email (Gmail SMTP)
-EMAIL_USER=your_email@gmail.com
-EMAIL_PASS=your_gmail_app_password
+# Brevo API Email Credentials
+BREVO_API_KEY=your_brevo_api_key
+BREVO_SENDER_EMAIL=your_verified_sender_email@example.com
 
-# Cookie Configuration
-# Set to "production" in production (HTTPS), "development" for local development
-SECURE_COOKIE=false
-```
-
-**Cookie Configuration**
-
-The `NODE_ENV` environment variable controls the `secure` attribute of authentication cookies.
-
-- `NODE_ENV=development` — Use for local development over HTTP.
-- `NODE_ENV=production` — Use in production over HTTPS. Cookies will only be sent over secure connections.
-
-Example:
-
-```javascript
-res.cookie("accessToken", accessToken, {
-  httpOnly: true,
-  secure: process.env.NODE_ENV === "production",
-  sameSite: "lax",
-});
-
-res.cookie("refreshToken", refreshToken, {
-  httpOnly: true,
-  secure: process.env.NODE_ENV === "production",
-  sameSite: "lax",
-});
+# Environment
+NODE_ENV=development
 ```
 
 ---
 
-## 📡 API Endpoints
+## API Endpoints
 
 ### 1. Register User
-
-**POST** `/auth/register`
+**POST** `/register`
 
 **Request Body**
-
 ```json
 {
   "username": "tester",
@@ -139,18 +128,12 @@ res.cookie("refreshToken", refreshToken, {
 }
 ```
 
-**Description**
-
-Creates a user with `PENDING` status and sends a 6-digit OTP to the registered email.
-
 ---
 
-### 2. Verify Email
-
-**POST** `/auth/verify`
+### 2. Verify Email (OTP)
+**POST** `/verify`
 
 **Request Body**
-
 ```json
 {
   "userId": "YOUR-USER-UUID",
@@ -158,18 +141,24 @@ Creates a user with `PENDING` status and sends a 6-digit OTP to the registered e
 }
 ```
 
-**Description**
+---
 
-Verifies the OTP and activates the user account.
+### 3. Resend OTP
+**POST** `/resend-otp`
+
+**Request Body**
+```json
+{
+  "userId": "YOUR-USER-UUID"
+}
+```
 
 ---
 
-### 3. Login
-
-**POST** `/auth/login`
+### 4. Login
+**POST** `/login`
 
 **Request Body**
-
 ```json
 {
   "email": "test@example.com",
@@ -177,59 +166,51 @@ Verifies the OTP and activates the user account.
 }
 ```
 
-**Response**
-
-- Returns authenticated user information.
-- Sets the following **HttpOnly cookies**:
-  - `accessToken`
-  - `refreshToken`
-
-> No JWT tokens are returned in the response body.
-
----
-
-### 4. Refresh Access Token
-
-**POST** `/auth/refresh`
-
-**Description**
-
-Uses the **refreshToken HttpOnly cookie** to generate a new access token.
-
-**Response**
-
-- Issues a new `accessToken` HttpOnly cookie.
-- Returns a success response.
-
-> No request body is required.
+**Response Body**
+```json
+{
+  "success": true,
+  "accessToken": "ey...",
+  "user": {
+    "id": "...",
+    "username": "tester",
+    "email": "test@example.com"
+  }
+}
+```
+*Note: Also sets the `refreshToken` HttpOnly cookie.*
 
 ---
 
-### 5. Logout (Protected)
+### 5. Refresh Access Token
+**POST** `/refresh`
 
-**POST** `/auth/logout`
+*Uses the `refreshToken` HttpOnly cookie.*
 
-**Description**
-
-- Authenticates the user using the `accessToken` cookie.
-- Removes the refresh token from the database.
-- Clears both authentication cookies.
-- Marks the user's status as `OFFLINE`.
-
-> No request body is required.
+**Response Body**
+```json
+{
+  "success": true,
+  "message": "Access token refreshed successfully",
+  "accessToken": "ey..."
+}
+```
 
 ---
 
-### 6. Get Current User (Protected)
+### 6. Logout
+**POST** `/logout`
 
-**GET** `/auth/me`
+*Clears the `refreshToken` HttpOnly cookie, marks user as `OFFLINE`, and revokes the token from PostgreSQL.*
 
-**Description**
+---
 
-Authenticates the user using the `accessToken` HttpOnly cookie and returns the authenticated user's information.
+### 7. Get Current User (`/me`)
+**GET** `/me`
 
-**Response**
+*Requires `Authorization: Bearer <accessToken>` header.*
 
+**Response Body**
 ```json
 {
   "success": true,
@@ -242,29 +223,14 @@ Authenticates the user using the `accessToken` HttpOnly cookie and returns the a
 
 ---
 
-## 🔐 Authentication Flow
+## Getting Started
 
-1. The user logs in with their email and password.
-2. The server validates the credentials.
-3. Upon successful authentication, the server:
-   - Issues an `accessToken` (15-minute expiry) as an **HttpOnly cookie**.
-   - Issues a `refreshToken` (7-day expiry) as an **HttpOnly cookie** and stores it in PostgreSQL.
+```bash
+# Install Dependencies
+npm install
 
-4. The client accesses protected endpoints using the `accessToken` cookie, which is automatically included by the browser.
-5. If the `accessToken` expires, the client sends a request to `/auth/refresh`.
-6. The server validates the `refreshToken` from the **HttpOnly cookie** against the database. If valid, it issues a new `accessToken` cookie.
-7. The client automatically retries the original request using the newly issued `accessToken`.
-8. On logout, the server revokes the refresh token from the database and clears both authentication cookies.
-
-## 🌐 Frontend Integration
-
-When using Axios, enable credentials so the browser can send and receive HttpOnly cookies.
-
-```javascript
-const apiClient = axios.create({
-  baseURL: "http://localhost:3000/auth",
-  withCredentials: true,
-});
+# Start Service
+npm start
 ```
 
-For cross-origin requests, ensure your backend enables CORS with `credentials: true`.
+Service starts at `http://localhost:3000`.
